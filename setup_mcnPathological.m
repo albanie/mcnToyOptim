@@ -6,4 +6,5 @@ function setup_mcnPathological()
 % Licensed under The MIT License [see LICENSE.md for details]
 
   root = fileparts(mfilename('fullpath')) ;
-  addpath(root, [root '/examples'], [root '/exps'], [root '/vis']) ;
+  addpath(root, [root '/examples'], [root '/exps']) ;
+  addpath([root '/matlab'], [root '/vis']) ;
