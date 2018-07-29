@@ -12,8 +12,14 @@ vl_contrib('setup', 'mcnToyOptim') ;
 
 Then to run some trials, you can run `launch_exp('dataset', 'rosenbrock', 'expType', 'blend-lite')`, to produce a figure comparing some solvers.  This is just a demo with some default set of parameters (you can get much better performance with grid searches if you wish to compare the methods more carefully).
 
-![rosenbrock](misc/rosenbrock.jpg)
+<br>
+<br>
+<img src="misc/rosenbrock.jpg" width="600" />
+<br>
+<br>
 
 or `launch_exp('dataset', 'rahimiRecht')` to get something like this:
 
-![rosenbrock](misc/rahimi-recht.jpg)
+<br>
+<br>
+<img src="misc/rahimi-recht.jpg" width="600" />
