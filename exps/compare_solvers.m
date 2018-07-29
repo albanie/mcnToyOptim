@@ -1,4 +1,40 @@
 function [bestConfigs,repeatedData] = compare_solvers(varargin)
+%COMPARE_SOLVERS - compare different solvers on toy problems
+%   [BESTCONFIGS, REPEATEDDATA] = COMPARE_SOLVERS(VARARGIN) compare
+%   a selection of solvers on toy optimisation problems.
+%
+%   COMPARE_SOLVERS(..., 'option', value, ...) accepts the following
+%   options:
+%
+%   `bestConfigs`:: {}
+%    An array of custom experimental configurations. This option is
+%    useful when the best configruations have already been found by
+%    grid search and the goal is to use resulting hyperparameters
+%    for an experiment.
+%
+%   `numRepeats` :: 1
+%    The number of times to repeat an experiment.
+%
+%   The following parameters are used to define grid searches:
+%
+%   `gridBeta1s` :: []
+%    Range of Beta1 values to search over (used by Adam).
+%
+%   `gridBeta2s` :: []
+%    Range of Beta2 values to search over (used by Adam).
+%
+%   `gridMomentums` :: []
+%    Range of momentum values to search over (used by SGD).
+%
+%   `gridLearningRates` :: []
+%    Range of learning rate values to search over (used by SGD & Adam).
+%
+%   `gridRhos` :: []
+%    Range of rho (moving average window for variance update) values
+%    to search over (used by RMSProp).
+%
+% Copyright (C) 2018 Samuel Albanie
+% Licensed under The MIT License [see LICENSE.md for details]
 
   oo.dev = 1 ;
   oo.expType = 1 ;
@@ -75,7 +111,12 @@ function [bestConfigs,repeatedData] = compare_solvers(varargin)
 
   % select a set of solvers for this experiment
   solverConfigs = standardConfigs(oo.dataset, oo.expType, ...
-                                  'bestConfigs', oo.bestConfigs) ;
+                        'gridLearningRates', oo.gridLearningRates, ...
+                        'gridMomentums', oo.gridMomentums, ...
+                        'gridRhos', oo.gridRhos, ...
+ 												'gridBeta1s',  oo.gridBeta1s, ...
+ 												'gridBeta2s', oo.gridBeta2s, ...
+                        'bestConfigs', oo.bestConfigs) ;
 
   [solverNames, losses, bestConfigs, repeatedData] ...
                   = runSolvers(solverConfigs, problemCfg, data, oo) ;

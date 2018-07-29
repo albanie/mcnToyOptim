@@ -9,8 +9,6 @@ function [best,repeatData] = grid_search_optim(solverConfig, dataset, ...
   for gg = 1:numel(expGrid)
     fprintf('(%d/%d): evaluating %s\n', gg, numel(expGrid), solverName) ;
     if strcmp(solverName, 'CurveBall')
-      %solver = CurveBall(expGrid{gg}{:}, ...
-        %'rosenbrockDebug', oo.rosenbrockDebug) ; % does not use the same parent structure
       solver = CurveBall(expGrid{gg}{:}) ; % does not use the same parent structure
     else
       solver = solvers.(solverName)(expGrid{gg}{:}) ;
@@ -26,6 +24,7 @@ function [best,repeatData] = grid_search_optim(solverConfig, dataset, ...
       end
       losses = zeros(1, oo.numIters) ;
       func = modelZoo(dataset, oo, solverName, problemCfg) ;
+
       if strcmp(oo.dataset, 'rosenbrock')
         %xVals = cell(1, oo.numIters, 2) ;
         xVals = cell(1, oo.numIters, 1) ;
@@ -34,35 +33,10 @@ function [best,repeatData] = grid_search_optim(solverConfig, dataset, ...
       %losses(1) = 0.1 ; % use arbitrary first loss to correspond
       fprintf('optimising %s with %s (%s) \n', dataset, solverName, oo.expType) ;
       for iter = 1:oo.numIters
-        switch solverName
-          case 'CurveBall'
-            eval_wrapper(func, oo, 'newton', true) ;
-            solver.net = func ;
-            solver.labels = data.leastSq.vals{4} ; % least squares labels
-            solver.loss = 'ls' ;
-            solver.step(func) ;
-          %case 'LBFGS'
-            %fh = @(x) eval_wrapper(func, data) ;
-            %solver.net = func ;
-            %%func.getValue(w)
-            %solver.step(fh) ;
-          otherwise
-            eval_wrapper(func, oo) ;
-            %func.eval({}) ;
-            %func.getValue(w)
-            solver.step(func) ;
-        end
-
-        if ~strcmp(solverName, 'CurveBall')
-          loss_value = func.getValue('loss') ;
-        else
-          loss_value = solver.last_loss;
-        end
-        % track stats
+        losses(iter) = solverStep(solverName, solver, func, data, oo) ;
         if strcmp(oo.dataset, 'rosenbrock')
-          xVals{iter+1} = func.getValue('w') ;
+          xVals{iter+1} = func.getValue('w') ; % track stats
         end
-        losses(iter) = loss_value ;
       end
       repeatDataLosses(ii,:) = losses(1:end) ;
       if strcmp(oo.dataset, 'rosenbrock')
@@ -99,7 +73,6 @@ function grid = extractGrid(ss)
 %
 %    grid = {{'learningRate', 1, 'momentum', 0.9}, ...
 %            {'learningRate', 0.1, 'momentum', 0.8}} ;
-%
 
   base = rmfield(ss, 'name') ; % remove meta data
   if isfield(base, 'numRepeats')
@@ -121,13 +94,35 @@ function grid = extractGrid(ss)
   end
 end
 
+% -----------------------------------------------------------------
+function lossValue = solverStep(solverName, solver, func, data, oo)
+% -----------------------------------------------------------------
+  switch solverName
+    case 'CurveBall'
+      eval_wrapper(func, oo, 'curveball', true) ;
+      solver.net = func ;
+      solver.labels = data.leastSq.vals{4} ; % least squares labels
+      solver.loss = 'ls' ;
+      solver.step(func) ;
+    otherwise
+      eval_wrapper(func, oo) ;
+      solver.step(func) ;
+  end
+
+  if ~strcmp(solverName, 'CurveBall')
+    lossValue = func.getValue('loss') ;
+  else
+    lossValue = solver.last_loss;
+  end
+end
+
 % -----------------------------------------------------------------------
 function eval_wrapper(func, oo, varargin)
 % -----------------------------------------------------------------------
 % Each Least Squares model produces predictions rather than a loss (labels
 % are passed into the optimiser separately).  Therefore we only pass the
 % first part of the data into the optimizer
-  opts.newton = false ;
+  opts.curveball = false ;
   opts = vl_argparse(opts, varargin) ;
 
   switch oo.dataset
@@ -150,8 +145,8 @@ function eval_wrapper(func, oo, varargin)
 
     % run forward pass only (backward pass will be handled by the network)
     extras = {} ;
-    if opts.newton, extras = [extras {'forward'}] ; end
-    if strcmp(oo.dataset, 'rahimi-recht') && ~opts.newton
+    if opts.curveball, extras = [extras {'forward'}] ; end
+    if strcmp(oo.dataset, 'rahimiRecht') && ~opts.curveball
       ins = [ins {'y', oo.data.vals{4}}] ;
     end
   func.eval(ins, extras{:}) ;
