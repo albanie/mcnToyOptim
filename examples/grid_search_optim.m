@@ -158,9 +158,7 @@ function eval_wrapper(func, oo, varargin)
 
     % run forward pass only (backward pass will be handled by the network)
     extras = {} ;
-    keyboard
     if opts.newton, extras = [extras {'forward'}] ; end
-
     if strcmp(oo.experiment, 'rahimi-recht') && ~opts.newton
       ins = [ins {'y', oo.data.vals{4}}] ;
     end
