@@ -1,5 +1,6 @@
 function [best,repeatData] = grid_search_optim(solverConfig, dataset, ...
                                                      data, oo, problemCfg)
+% TODO(samuel) - cleanup & docs
 
   ss = parseCfg(solverConfig) ;
   solverName = ss.name ;
