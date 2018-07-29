@@ -1,4 +1,5 @@
-#mcnPathological
+## mcnPathological
+
 
 This small codebase contains some "toy" optimisation problems that exhibit pathological behaviour.  It has implementations for the [Rahimi-Recht](https://github.com/benjamin-recht/shallow-linear-net/blob/master/TwoLayerLinearNets.ipynb) problem, as various versions of the Rosenbrock function.  These are small-scale problems that we found useful while working on the [Curveball](https://github.com/jotaf98/curveball) solver.
 
