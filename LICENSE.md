@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2018 Samuel Albanie, Joao F. Henriques, Sebastien Erhardt
+Copyright (c) 2018 Samuel Albanie, Joao F. Henriques, Sebastien Ehrhardt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
