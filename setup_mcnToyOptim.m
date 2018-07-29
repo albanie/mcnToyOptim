@@ -1,5 +1,5 @@
-function setup_mcnPathological()
-%SETUP_MCNPATHOLOGICAL Sets up mcnPathological, by adding its folders
+function setup_mcnToyOptim()
+%SETUP_MCNTOYOPTIM Sets up mcnToyOptim, by adding its folders
 % to the MATLAB path
 %
 % Copyright (C) 2018 Samuel Albanie, Sebastien Erhardt, Joao F. Henriques
