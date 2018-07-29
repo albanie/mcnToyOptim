@@ -1,4 +1,5 @@
-function [best,repeatData] = grid_search_optim(solverConfig, modelName, data, oo, problemCfg)
+function [best,repeatData] = grid_search_optim(solverConfig, dataset, ...
+                                                     data, oo, problemCfg)
 
   ss = parseCfg(solverConfig) ;
   solverName = ss.name ;
@@ -24,8 +25,8 @@ function [best,repeatData] = grid_search_optim(solverConfig, modelName, data, oo
         fprintf('running repeat %d/%d\n', ii, oo.numRepeats) ;
       end
       losses = zeros(1, oo.numIters) ;
-      func = modelZoo(modelName, oo, solverName, problemCfg) ;
-      if strcmp(oo.experiment, 'rosenbrock')
+      func = modelZoo(dataset, oo, solverName, problemCfg) ;
+      if strcmp(oo.dataset, 'rosenbrock')
         %xVals = cell(1, oo.numIters, 2) ;
         xVals = cell(1, oo.numIters, 1) ;
         xVals{1} = func.getValue('w') ;
@@ -58,18 +59,18 @@ function [best,repeatData] = grid_search_optim(solverConfig, modelName, data, oo
           loss_value = solver.last_loss;
         end
         % track stats
-        if strcmp(oo.experiment, 'rosenbrock')
+        if strcmp(oo.dataset, 'rosenbrock')
           xVals{iter+1} = func.getValue('w') ;
         end
         losses(iter) = loss_value ;
       end
       repeatDataLosses(ii,:) = losses(1:end) ;
-      if strcmp(oo.experiment, 'rosenbrock')
+      if strcmp(oo.dataset, 'rosenbrock')
         repeatDataXvals(ii,:,:) = vertcat(xVals{1:end}) ;
       end
     end
     gridLosses{gg} = losses ;
-    if strcmp(oo.experiment, 'rosenbrock')
+    if strcmp(oo.dataset, 'rosenbrock')
       gridXVals{gg} = vertcat(xVals{:}) ;
     end
   end
@@ -79,7 +80,7 @@ function [best,repeatData] = grid_search_optim(solverConfig, modelName, data, oo
   [~,minIdx] = min(finishes) ;
   best.cfg = expGrid{minIdx} ;
   best.losses = gridLosses{minIdx} ;
-  if strcmp(oo.experiment, 'rosenbrock')
+  if strcmp(oo.dataset, 'rosenbrock')
     best.xVals = gridXVals{minIdx} ;
     repeatData.xVals = repeatDataXvals ;
   end
@@ -120,15 +121,6 @@ function grid = extractGrid(ss)
   end
 end
 
-% ----------------------------------------------------------------------
-function solverStruct = parseCfg(cfg)
-% ----------------------------------------------------------------------
-  assert(mod(numel(cfg), 2) == 0, 'cfg should contain key-val pairs') ;
-  for ii = 1:numel(cfg)/2
-    solverStruct.(cfg{2 * ii - 1}) = cfg{2 * ii} ;
-  end
-end
-
 % -----------------------------------------------------------------------
 function eval_wrapper(func, oo, varargin)
 % -----------------------------------------------------------------------
@@ -138,7 +130,7 @@ function eval_wrapper(func, oo, varargin)
   opts.newton = false ;
   opts = vl_argparse(opts, varargin) ;
 
-  switch oo.experiment
+  switch oo.dataset
     case 'rosenbrock'
       if oo.addNoise
         sample = rand ;
@@ -149,9 +141,9 @@ function eval_wrapper(func, oo, varargin)
       else
         images = single(1) ;
       end
-    case 'rahimi-recht'
+    case 'rahimiRecht'
       images = single(oo.data.vals{2}) ;
-    otherwise, error('unrecognised dataset - %s\n', oo.experiment) ;
+    otherwise, error('unrecognised dataset - %s\n', oo.dataset) ;
   end
 
   ins = {'images', images} ;
@@ -159,7 +151,7 @@ function eval_wrapper(func, oo, varargin)
     % run forward pass only (backward pass will be handled by the network)
     extras = {} ;
     if opts.newton, extras = [extras {'forward'}] ; end
-    if strcmp(oo.experiment, 'rahimi-recht') && ~opts.newton
+    if strcmp(oo.dataset, 'rahimi-recht') && ~opts.newton
       ins = [ins {'y', oo.data.vals{4}}] ;
     end
   func.eval(ins, extras{:}) ;
@@ -243,7 +235,7 @@ function prediction = rosenbrock_least_sq(x, addNoise, randScale)
 end
 
 % -----------------------------------------------------------------------
-function model = modelZoo(modelName, opts, methodName, problemCfg)
+function model = modelZoo(dataset, opts, methodName, problemCfg)
 % -----------------------------------------------------------------------
   isLeastSquaresMethod = strcmp(methodName, 'CurveBall') ;
   if ~isempty(opts.sharedX0)
@@ -257,32 +249,37 @@ function model = modelZoo(modelName, opts, methodName, problemCfg)
       % under the least square formulation, we construct models that output
       % predictions, rather than the loss directly.  However, to keep a
       % consistent interface, we label the output of each model as "loss"
-      switch modelName
+      switch dataset
         case 'rosenbrock'
           w = Param('value', rosenbrockX0) ;
           prediction = rosenbrock_least_sq(w) ;
         case 'rahimiRecht'
           images = Input() ;
           prediction = rahimiRecht(images, opts.x_dim, opts.y_dim) ;
-        otherwise, error('unknown model: %s', modelName) ;
+        otherwise, error('unknown dataset: %s', dataset) ;
       end
       loss = prediction ;
   else % everything else (i.e. methods that do not require an LS formulation)
-    switch modelName
+    switch dataset
       case 'rosenbrock' % NOTE: [1.5, 1.5] used in pytorch tests
         w = Param('value', rosenbrockX0) ;
         loss = rosenbrock(w) ;
-      %case 'rosenbrock-ndim'
-      %  w0 = ones(1, opts.numDims, 'single') * 0 ;
-      %  w = Param('value', w0) ;
-      %  loss = rosenbrock(w) ;
       case 'rahimiRecht'
         images = Input() ; y = Input() ;
         loss = rahimiRecht(images, opts.x_dim, opts.y_dim, y) ;
-      otherwise, error('unknown model: %s', modelName) ;
+      otherwise, error('unknown dataset: %s', dataset) ;
     end
   end
-
 	Layer.workspaceNames() ;
 	model = Net(loss) ;
 end
+
+% ----------------------------------------------------------------------
+function solverStruct = parseCfg(cfg)
+% ----------------------------------------------------------------------
+  assert(mod(numel(cfg), 2) == 0, 'cfg should contain key-val pairs') ;
+  for ii = 1:numel(cfg)/2
+    solverStruct.(cfg{2 * ii - 1}) = cfg{2 * ii} ;
+  end
+end
+

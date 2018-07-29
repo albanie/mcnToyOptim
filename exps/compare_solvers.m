@@ -13,30 +13,22 @@ function [bestConfigs,repeatedData] = compare_solvers(varargin)
   oo.addNoise = false ;
   oo.plotNoisyFunc = 1 ;
   oo.rosenbrockDebug = 0 ;
+  oo.dataset = 'rosenbrock' ;
   oo.builtinStepTol = 1e-20 ;
   oo.builtinOptimalityTol = 1e-8 ;
   oo.produceIntermediateFig = false ;
 
   % grid search params if desired
-  oo.gridLearningRates = [] ;
-  oo.gridMomentums = [] ;
   oo.gridRhos = [] ;
   oo.gridBeta1s = [] ;
   oo.gridBeta2s = [] ;
   oo.bestConfigs = [] ;
-  oo.experiment = 'rosenbrock' ;
+  oo.gridMomentums = [] ;
+  oo.gridLearningRates = [] ;
 	oo = vl_argparse(oo, varargin) ;
 
-  switch oo.experiment
-    case 'rahimi-recht'
-      dataset = 'rahimi-recht' ;
-      modelName = 'rahimiRecht' ;
-    case 'rosenbrock'
-      modelName = 'rosenbrock' ;
-      dataset = 'rosenbrock' ;
-  end
-
-  switch dataset
+  % configure the settings for each dataset problem
+  switch oo.dataset
     case 'rosenbrock'
       oo.numDims = 2 ;
       data.name = 'Rosenbrock' ;
@@ -46,7 +38,6 @@ function [bestConfigs,repeatedData] = compare_solvers(varargin)
       data.leastSq.vals = {'images', zeros(1,'single'), ...
                'labels', reshape(single([0 0]), 1, 1, 2)} ; % special form
 
-			problemCfg.name = data.name ;
       % Selecting the initialisation value for the optimisation is somewhat
       % arbitrary
       problemCfg.x0 = [-0.25 -0.25] ;
@@ -57,19 +48,15 @@ function [bestConfigs,repeatedData] = compare_solvers(varargin)
 			problemCfg.ymin = -0.75 ;
 			problemCfg.ymax = 1.5 ;
 			problemCfg.target = [1, 1] ;
+			problemCfg.name = data.name ;
 
-    case 'rosenbrock-ndim'
-      oo.numDims = 20 ;
-      data.vals = {} ;
-      data.name = sprintf('%d-Dimensional Rosenbrock', oo.numDims) ;
-
-    case 'rahimi-recht' % a la Joao
+    case 'rahimiRecht' % a la Joao
       % from: https://github.com/benjamin-recht/shallow-linear-net/blob/master/TwoLayerLinearNets.ipynb
       num_samples = 1000 ;
       oo.x_dim = 6 ;  % input size
       oo.y_dim = 10 ;  % output size
       data_x = randn(oo.x_dim, num_samples) ;
-      % set degrexpType of degenerate-ness for rahimi-recht dataset
+      % set level of degeneracy for rahimiRecht dataset
       dataset_epsilon = 1e-5 ;
       A = linspace(1, dataset_epsilon, oo.y_dim)' .* rand(oo.y_dim, oo.x_dim) ;
 
@@ -82,32 +69,38 @@ function [bestConfigs,repeatedData] = compare_solvers(varargin)
       oo.data = data ;
 			problemCfg.name = data.name ;
       problemCfg.x0 =  [0 0] ; % not used in this method
-
-      data.leastSq.vals = data.vals ; % special form
+      data.leastSq.vals = data.vals ; % special form to maintain interface
     otherwise, error('unknown dataset: %s', dataset) ;
   end
 
   % select a set of solvers for this experiment
-  solverConfigs = standardConfigs(oo.experiment, oo.expType, ...
+  solverConfigs = standardConfigs(oo.dataset, oo.expType, ...
                                   'bestConfigs', oo.bestConfigs) ;
 
-  [solverNames, losses] = runSolvers(solverConfigs, problemCfg, data, oo) ;
+  [solverNames, losses, bestConfigs, repeatedData] ...
+                  = runSolvers(solverConfigs, problemCfg, data, oo) ;
 
   plot_losses(solverNames, losses, data.name) ;
-  if strcmp(oo.experiment, 'rosenbrock') && oo.produceIntermediateFig
+  if strcmp(oo.dataset, 'rosenbrock') && oo.produceIntermediateFig
     plot_trajectories(solverNames, xVals, problemCfg, oo) ;
   end
 end
 
 % ----------------------------------------------------------------------------
-function [solverNames,losses,bestConfig] = runSolvers(solverConfigs, data, oo)
+function [solverNames, losses, bestConfig, repeatedData] = ...
+                 runSolvers(solverConfigs, problemCfg, data, oo)
 % ----------------------------------------------------------------------------
 %RUNSOLVERS - run a given collection of solvers on a particular problem
-%    [SOLVERNAMES, LOSSES, BESTCONFIG] = RUNSOLVERS(SOLVERCONFIGS, DATA, OO)
+%    [SOLVERNAMES, LOSSES, BESTCONFIG, REPEATEDDATA] =
+%                                       RUNSOLVERS(SOLVERCONFIGS, DATA, OO)
 %    runs an optimisation algorithm for each of the solvers specified in the
-%    cell array SOLVERCONFIGS on the problem specified by PROBLEMCFG
+%    cell array SOLVERCONFIGS on the problem specified by PROBLEMCFG. It
+%    returns the name of each solver used, together with its associated loss
+%    trajectory. Additionally, it returns the best configuration for each
+%    solver in BESTCONFIG (this can be used to perform grid searches), and
+%    the results of repeated solver runs in REPEATEDDATA.
 
-  % run optimization
+  % allocate storage for the results of optimization
   losses = cell(1, numel(solverConfigs)) ;
   xVals = cell(1, numel(solverConfigs)) ;
   solverNames = cell(1, numel(solverConfigs)) ;
@@ -115,7 +108,8 @@ function [solverNames,losses,bestConfig] = runSolvers(solverConfigs, data, oo)
   repeatedData = cell(1, numel(solverConfigs)) ;
 
   % this is only used for visualisations, since it adds limited value when there
-  % are many samples
+  % are many samples. For experimental results, the initialisation of the
+  % solver can be shared.
   if ~isempty(oo.sharedX0)
     oo.sharedX0 = problemCfg.x0 + (rand - 0.5) * oo.x0noise ;
   end
@@ -129,11 +123,11 @@ function [solverNames,losses,bestConfig] = runSolvers(solverConfigs, data, oo)
         [best,repeatData] = builtin_solvers(solverName, problemCfg.x0, oo) ;
         bestConfig = {'name', solverName} ;
       otherwise
-        [best,repeatData] = grid_search_optim(solverCfg, modelName, ...
+        [best,repeatData] = grid_search_optim(solverCfg, oo.dataset, ...
                                               data, oo, problemCfg) ;
         bestConfig = [{'name', solverName}, best.cfg] ;
     end
-    if strcmp(oo.experiment, 'rosenbrock')
+    if strcmp(oo.dataset, 'rosenbrock')
       xVals{ii} = best.xVals ;
     end
 		losses{ii} = best.losses ;

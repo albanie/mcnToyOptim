@@ -30,7 +30,7 @@ function solverConfigs = standardConfigs(problemName, expType, varargin)
                 'autolambda', false} ; % only supported for classification
 
   switch problemName
-    case 'rahimi-recht'
+    case 'rahimiRecht'
       hyenalOpts = [hyenalOpts {'lambda', 1, 'learningRate', 1}] ;
     case 'rosenbrock'
       hyenalOpts = [hyenalOpts {'lambda', 1E-1, 'learningRate', 5E-1}] ;
