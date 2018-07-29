@@ -10,8 +10,7 @@ function setup_mcnToyOptim()
   check_dependency('curveball') ;
 
   root = fileparts(mfilename('fullpath')) ;
-  addpath(root, [root '/examples'], [root '/exps']) ;
-  addpath([root '/matlab'], [root '/vis']) ;
+  addpath(root, [root '/examples'], [root '/exps'], [root '/vis']) ;
 
 % -----------------------------------
 function check_dependency(moduleName)
