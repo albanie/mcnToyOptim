@@ -7,6 +7,7 @@ function setup_mcnToyOptim()
 
   % add dependencies
   check_dependency('autonn') ;
+  check_dependency('curveball') ;
 
   root = fileparts(mfilename('fullpath')) ;
   addpath(root, [root '/examples'], [root '/exps']) ;
