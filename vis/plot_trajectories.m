@@ -1,21 +1,11 @@
 function plot_trajectories(names, xVals, cfg, opts, varargin)
+%TODO(samuel) - clean up & docs
 
   opts.colors = getColorPalette() ;
   opts.finalFigure = false ;
   opts = vl_argparse(opts, varargin) ;
 
-
-  %res = struct() ;
-  %styles = {'o-', '+--', '+-', '+-', '+-', '+-', '+-', '+-'} ;
   styles = {'+-', '+-', '+-', '+-', '+-', '+-', '+-', '+-'} ;
-  %for ii = 1:numel(solvers)
-    %res(ii).name = solvers{ii} ;
-    %res(ii).history = rosenbrocker(x0, solvers{ii}, maxIter) ;
-	%end
-
-  %reasonable
-  %xmin = -1.5 ; xmax = 1.5 ;
-  %ymin = -1 ; ymax = 3 ;
 	x = linspace(cfg.xmin, cfg.xmax, cfg.resolution) ;
   y = linspace(cfg.ymin, cfg.ymax, cfg.resolution) ;
 	[xx,yy] = meshgrid(x,y) ;
@@ -80,8 +70,6 @@ function plot_trajectories(names, xVals, cfg, opts, varargin)
   set(groot, 'defaultAxesTickLabelInterpreter','latex') ;
   set(groot, 'defaultLegendInterpreter','latex') ;
   title(cfg.name, 'fontsize', 20) ; grid on ;
-
-	%out = min(1, flipud(gray) *  100) ;
   colormap(flipud(pink)) ;
 
   if opts.finalFigure
@@ -92,7 +80,6 @@ function plot_trajectories(names, xVals, cfg, opts, varargin)
 		xlabel('u') ;
 		ylabel('v') ;
 
-		%title('PCR on PF-PASCAL', 'FontSize', 18) ;
 		print('figs/sol-trajectories.pdf', '-dpdf','-r0') ;
 	end
   if exist('zs_dispFig', 'file'), zs_dispFig ; end

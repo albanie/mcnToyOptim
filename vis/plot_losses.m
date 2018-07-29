@@ -1,4 +1,5 @@
 function plot_losses(names, losses, dataset, varargin)
+%TODO(samuel) - clean up & docs
 
   opts.finalFigure = false ;
   opts.limitIters = inf ;

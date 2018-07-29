@@ -1,9 +1,11 @@
+# a hacky script to produce some gif animations
+
 #MODE=$1
 #RUN_ID=$2
 
 FORMAT="png"
-SRC="/scratch/shared/nfs1/albanie/mcn/contrib-matconvnet/mcnOptim/figs/gif_frames"
-DEST="/scratch/shared/nfs1/albanie/mcn/contrib-matconvnet/mcnOptim/figs/gifs"
+SRC="~/data/mcn/contrib-matconvnet/mcnOptim/figs/gif_frames"
+DEST="~/data/mcn/contrib-matconvnet/mcnOptim/figs/gifs"
 
 #case "$MODE" in
 
