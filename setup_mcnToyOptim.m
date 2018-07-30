@@ -21,8 +21,11 @@ function check_dependency(moduleName)
   if exist(setupFunc, 'file')
     vl_contrib('setup', moduleName) ;
   else
-    % try adding the module to the path
+    % try adding the module to the path, supressing the warning
+    warning('off', 'MATLAB:dispatcher:pathWarning') ;
     addpath(fullfile(vl_rootnn, 'contrib', moduleName)) ;
+    warning('on', 'MATLAB:dispatcher:pathWarning') ;
+
     if exist(setupFunc, 'file')
       vl_contrib('setup', moduleName) ;
     else
