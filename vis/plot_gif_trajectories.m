@@ -1,10 +1,11 @@
-function plot_gif_trajectories(names, xVals, cfg, colors, opts, varargin)
-
-  opts.finalFigure = false ;
+function plot_gif_trajectories(names, xVals, cfg, varargin)
   opts.zsDisp = false ;
   opts.runId = 1 ;
   opts.format = 'png' ;
   opts.figRoot = fullfile(vl_rootnn, 'data/mcnOptim') ;
+  opts.plotNoisyFunc = true;
+  opts.ourMethod ='CurveBall';
+  opts.colors = getColorPalette() ;
   opts = vl_argparse(opts, varargin) ;
 
   path = fullfile(opts.figRoot, ...
@@ -69,7 +70,7 @@ function plot_gif_trajectories(names, xVals, cfg, colors, opts, varargin)
       end
       % note, we skip the first step which stores default loss value
       solverPlots{ii} = plot(history(1:iterIdx,1), history(1:iterIdx,2), ...
-                            styles{ii}, 'LineWidth', lineWidth, 'color', colors{ii}) ;
+                            styles{ii}, 'LineWidth', lineWidth, 'color', opts.colors{ii}) ;
     end
     destColor = [183, 106, 183]/255 ;
     destColor = 'red' ;

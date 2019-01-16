@@ -155,6 +155,7 @@ function paper_exp(varargin)
 		problemCfg.target = [1, 1] ;
     problemCfg.name = dataset ;
     oo.plotNoisyFunc = 1 ;
+    oo.colors = colors;
 
     if oo.gifs
       plot_gif_trajectories(solverNames, xVals, problemCfg, oo, ...

@@ -18,35 +18,72 @@ function [res,repeatData] = builtin_solvers(solverName, x0, oo, varargin)
   builtinOpts = vl_argparse(builtinOpts, varargin) ;
 
   repeatDataLosses = ones(oo.numRepeats, oo.numIters) * oo.nullValue ;
-  repeatDataXvals = ones(oo.numRepeats, oo.numIters, 2) * oo.nullValue ;
 
-  for ii = 1:oo.numRepeats
-    fprintf('(%s) running repeat %d/%d\n', solverName, ii, oo.numRepeats) ;
-    if ~isempty(oo.sharedX0)
-      x0_rand = oo.sharedX0 ; % modify x0 if required
-    else
-      x0_rand = double(x0) + (rand - 0.5) * oo.x0noise ;
-    end
+  switch oo.dataset
+    case 'rosenbrock'
+      repeatDataXvals = ones(oo.numRepeats, oo.numIters, 2) * oo.nullValue ;
+      for ii = 1:oo.numRepeats
+        fprintf('(%s) running repeat %d/%d\n', solverName, ii, oo.numRepeats) ;
+        if ~isempty(oo.sharedX0)
+          x0_rand = oo.sharedX0 ; % modify x0 if required
+        else
+          x0_rand = double(x0) + (rand - 0.5) * oo.x0noise ;
+        end
 
-    [xVals, fVals, exitFlag] = rosenbrocker(x0_rand, solverName, ...
-                                            builtinOpts.maxFuncEvals, oo) ;
+        [xVals, fVals, exitFlag] = rosenbrocker(x0_rand, solverName, ...
+                                                builtinOpts.maxFuncEvals, oo) ;
 
-    if exitFlag > 1 % restart while there are still iterations remaining
-      storedXVals = {xVals} ; storedFVals = {fVals} ; totalIters = size(xVals,1) ;
-      while totalIters < oo.numIters && exitFlag > 1
-        fprintf('restarting builtin solver from [%g,%g]\n', xVals(end,:)) ;
-        [xVals, fVals, exitFlag] = rosenbrocker(xVals(end,:), solverName, ...
-                                               builtinOpts.maxFuncEvals, oo) ;
-        storedXVals{end+1} = xVals ;
-        storedFVals{end+1} = fVals ;
+        if exitFlag > 1 % restart while there are still iterations remaining
+          storedXVals = {xVals} ; storedFVals = {fVals} ; totalIters = size(xVals,1) ;
+          while totalIters < oo.numIters && exitFlag > 1
+            fprintf('restarting builtin solver from [%g,%g]\n', xVals(end,:)) ;
+            [xVals, fVals, exitFlag] = rosenbrocker(xVals(end,:), solverName, ...
+                                                   builtinOpts.maxFuncEvals, oo) ;
+            storedXVals{end+1} = xVals ;
+            storedFVals{end+1} = fVals ;
+            totalIters = size(storedXVals,2) ;
+          end
+          xVals = vertcat(storedXVals{:}) ;
+          fVals = vertcat(storedFVals{:}) ;
+        end
+        repeatDataXvals(ii,1:size(xVals,1),:) = xVals ;
+        repeatDataLosses(ii,1:numel(fVals)) = fVals ;
       end
-      xVals = vertcat(storedXVals{:}) ;
-      fVals = vertcat(storedFVals{:}) ;
-    end
-    repeatDataXvals(ii,1:size(xVals,1),:) = xVals ;
-    repeatDataLosses(ii,1:numel(fVals)) = fVals ;
-  end
+    case 'rahimiRecht' % a la Joao
+      repeatDataXvals = ones(oo.numRepeats, oo.numIters, oo.x_dim*oo.y_dim+oo.y_dim^2) * oo.nullValue ;
+      for ii = 1:oo.numRepeats
+        fprintf('(%s) running repeat %d/%d\n', solverName, ii, oo.numRepeats) ;
 
+        % Init x0
+        w1 = 2/(oo.y_dim + oo.x_dim) * randn(1,1,oo.x_dim, oo.y_dim) ;
+        w2 = 1/(oo.y_dim) * randn(1,1,oo.y_dim, oo.y_dim) ;
+
+        x0 = [w1(:); w2(:)];
+
+        [xVals, fVals, exitFlag] = rahimiRechter(x0, solverName, ...
+                                                builtinOpts.maxFuncEvals, oo) ;
+
+        if exitFlag > 1 % restart while there are still iterations remaining
+          storedXVals = {xVals} ; storedFVals = {fVals} ; totalIters = size(xVals,1) ;
+          while totalIters < oo.numIters && exitFlag > 1
+            fprintf('restarting builtin solver from [%g,%g]\n', xVals(end,:)) ;
+            [xVals, fVals, exitFlag] = rahimiRechterer(xVals, solverName, ...
+                                                   builtinOpts.maxFuncEvals, oo) ;
+            storedXVals{end+1} = xVals ;
+            storedFVals{end+1} = fVals ;
+            totalIters = size(storedXVals,2) ;
+          end
+          xVals = vertcat(storedXVals{:}) ;
+          fVals = vertcat(storedFVals{:}) ;
+        end
+        xVals = reshape(xVals, [], oo.x_dim*oo.y_dim+oo.y_dim^2);
+        repeatDataXvals(ii,1:size(xVals,1),:) = xVals ;
+        repeatDataLosses(ii,1:numel(fVals)) = fVals ;
+      end
+
+    otherwise, error('unknown dataset: %s', dataset) ;
+
+  end
   % only use last one (since grid search is not required for builtins)
   res.xVals = xVals ; res.losses = fVals ;
 
@@ -116,4 +153,67 @@ function [xVals,fVals,exitFlag] = rosenbrocker(x0, method, maxFuncEvals, oo)
 			fVals = [fVals ; fval] ;
 		end
 	end
+end
+
+function [xVals,fVals,exitFlag] = rahimiRechter(x0, method, maxFuncEvals, oo)
+% ---------------------------------------------------------------------------
+%ROSENBROCKER - wrapper for the rosenbrock function.
+  xVals = [] ; fVals = [] ;
+  objectiveArgs = {} ;
+  switch method
+    case 'BFGS'
+      args = {'Algorithm', 'quasi-newton', 'HessUpdate', 'bfgs'} ;
+      solver = @fminunc ;
+    case 'DFP'
+      args = {'Algorithm', 'quasi-newton', 'HessUpdate', 'dfp'} ;
+      solver = @fminunc ;
+    case 'steepdesc'
+      args = {'Algorithm', 'quasi-newton', 'HessUpdate', 'steepdesc'} ;
+      solver = @fminunc ;
+    case 'LM'
+      args = {'Algorithm', 'levenberg-marquardt'} ;
+      solver = @lsqnonlin ;
+      objectiveArgs = [objectiveArgs {'leastSquares', true}] ;
+  end
+
+  % configure the solver
+  solverName = func2str(solver) ;
+  objective = @(x) rahimiwithgrad(x, oo.data, oo.x_dim, oo.y_dim, objectiveArgs{:}) ;
+  opts = optimoptions(solver, ...
+                      'Display', 'iter', ...
+                      'OutputFcn', @valsTracker, ...
+                      'SpecifyObjectiveGradient', true, ...
+                      'MaxFunctionEvaluations', maxFuncEvals, ...
+                      'MaxIterations', oo.numIters, ...
+                      args{:}) ;
+  problem.x0 = x0 ;
+  problem.options = opts ;
+  problem.solver = solverName ;
+  problem.objective = objective ;
+
+  % Different matlab solvers unfortunately return exitflags in
+  % differing output positions, so we handle that here:
+  [~,~,out3,out4] = solver(problem) ;
+  switch solverName
+    case 'lsqnonlin', exitFlag = out4 ;
+    case 'fminunc', exitFlag = out3 ;
+  end
+
+
+  % NOTE: we use a nested function here to gain access to the internal
+  % state of the solver (allowing us to track xVals)
+  % -------------------------------------------------------
+	function stop = valsTracker(x, optimvalues, state)
+  % -------------------------------------------------------
+		stop = false ;
+		if isequal(state, 'iter')
+			xVals = [xVals ; x] ;
+      if isfield(optimvalues, 'fval')
+        fval = optimvalues.fval ;
+      else
+        fval = norm(optimvalues.residual)^ 2 ; % sum of squares
+      end
+      fVals = [fVals ; fval] ;
+    end
+  end
 end

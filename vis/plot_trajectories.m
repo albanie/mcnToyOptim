@@ -1,9 +1,11 @@
-function plot_trajectories(names, xVals, cfg, opts, varargin)
+function plot_trajectories(names, xVals, cfg, varargin)
 %TODO(samuel) - clean up & docs
-
+  opts.runId = 1 ;
   opts.colors = getColorPalette() ;
-  opts.finalFigure = false ;
-  opts = vl_argparse(opts, varargin) ;
+  opts.finalFigure = true ;
+  opts.gifs = true;
+  opts.ourMethod ='CurveBall';
+  opts.plotNoisyFunc = true;
 
   styles = {'+-', '+-', '+-', '+-', '+-', '+-', '+-', '+-'} ;
 	x = linspace(cfg.xmin, cfg.xmax, cfg.resolution) ;
