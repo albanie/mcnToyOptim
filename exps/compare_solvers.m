@@ -128,7 +128,7 @@ function [bestConfigs,repeatedData] = compare_solvers(varargin)
 end
 
 % ----------------------------------------------------------------------------
-function [solverNames, losses, bestConfig, repeatedData] = ...
+function [solverNames, losses, bestConfigs, repeatedData] = ...
                  runSolvers(solverConfigs, problemCfg, data, oo)
 % ----------------------------------------------------------------------------
 %RUNSOLVERS - run a given collection of solvers on a particular problem
